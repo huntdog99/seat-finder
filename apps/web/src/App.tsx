@@ -14,8 +14,7 @@ import FlightCard from './FlightCard';
 import AdBanner from './AdBanner';
 import Seo, { createFlightSearchStructuredData } from './Seo';
 import { trackEvent } from './analytics';
-
-const API_BASE = '/api';
+import { searchFlights } from './mockFlightService';
 
 export default function App() {
   const [from, setFrom] = useState('');
@@ -65,25 +64,7 @@ export default function App() {
     };
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-
-      const res = await fetch(`${API_BASE}/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        const errBody: ApiError = await res.json();
-        setError(errBody);
-        return;
-      }
-
-      const data: SearchResponse = await res.json();
+      const data = await searchFlights(request);
       setResults(data);
       trackEvent('search_performed', {
         from: from.toUpperCase(),
@@ -91,12 +72,8 @@ export default function App() {
         cabin_class: cabinClass,
         results_count: data.totalResults,
       });
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        setError({ error: 'Request timed out. Please try again.' });
-      } else {
-        setError({ error: 'Network error. Please check your connection and try again.' });
-      }
+    } catch {
+      setError({ error: 'Something went wrong. Please try again.' });
     } finally {
       setLoading(false);
     }
