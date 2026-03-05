@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   SearchRequest,
   SearchResponse,
@@ -10,6 +11,9 @@ import {
   ApiError,
 } from '@seat-finder/shared';
 import FlightCard from './FlightCard';
+import AdBanner from './AdBanner';
+import Seo, { createFlightSearchStructuredData } from './Seo';
+import { trackEvent } from './analytics';
 
 const API_BASE = '/api';
 
@@ -35,6 +39,12 @@ export default function App() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (from.toUpperCase() === to.toUpperCase()) {
+      setError({ error: 'Destination must be different from origin' });
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResults(null);
@@ -75,6 +85,12 @@ export default function App() {
 
       const data: SearchResponse = await res.json();
       setResults(data);
+      trackEvent('search_performed', {
+        from: from.toUpperCase(),
+        to: to.toUpperCase(),
+        cabin_class: cabinClass,
+        results_count: data.totalResults,
+      });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         setError({ error: 'Request timed out. Please try again.' });
@@ -88,12 +104,24 @@ export default function App() {
 
   const hasSeatPrefs = seatPosition || seatFeatures.length > 0 || planeHalf !== 'any';
 
+  const seoStructuredData = results && from && to && departureDate
+    ? createFlightSearchStructuredData(from, to, departureDate)
+    : undefined;
+
   return (
     <div className="app">
+      <Seo
+        title={results ? `Flights from ${from} to ${to}` : undefined}
+        description={results ? `Found ${results.totalResults} flights from ${from} to ${to} on ${departureDate}` : undefined}
+        canonical="/"
+        structuredData={seoStructuredData}
+      />
       <header className="app-header">
         <h1>Seat Finder</h1>
         <p>Find flights with your preferred seat</p>
       </header>
+
+      <AdBanner adSlot="header-banner" format="horizontal" className="ad-header-banner" />
 
       <form className="search-form" onSubmit={handleSearch}>
         <div className="form-row">
@@ -232,10 +260,13 @@ export default function App() {
           </div>
 
           {hasSeatPrefs && results.other.length > 0 && (
+            <>
+            <AdBanner adSlot="in-feed" format="horizontal" className="ad-in-feed" />
             <div className="results-section other">
               <h2>Other Matching Flights (Seat Preferences Not Guaranteed)</h2>
               {results.other.map(f => <FlightCard key={f.id} flight={f} />)}
             </div>
+            </>
           )}
 
           {results.totalResults === 0 && (
@@ -243,6 +274,11 @@ export default function App() {
           )}
         </>
       )}
+
+      <footer className="app-footer">
+        <Link to="/privacy">Privacy Policy</Link>
+        <Link to="/terms">Terms of Service</Link>
+      </footer>
     </div>
   );
 }

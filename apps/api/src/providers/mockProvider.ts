@@ -122,6 +122,8 @@ export class MockProvider implements FlightProvider {
       if (f.from !== request.from || f.to !== request.to) return false;
       if (f.cabinClass !== request.cabinClass) return false;
       if (f.stops > request.maxStops) return false;
+      const flightDate = f.departureTime.split('T')[0];
+      if (flightDate !== request.departureDate) return false;
       return true;
     });
   }

@@ -75,6 +75,10 @@ export function validateSearchRequest(req: Partial<SearchRequest>): ValidationEr
     errors.push({ field: 'to', message: 'Must be a valid 3-letter IATA airport code (uppercase)' });
   }
 
+  if (req.from && req.to && req.from === req.to) {
+    errors.push({ field: 'to', message: 'Destination must be different from origin' });
+  }
+
   if (!req.departureDate || !ISO_DATE_REGEX.test(req.departureDate) || isNaN(Date.parse(req.departureDate))) {
     errors.push({ field: 'departureDate', message: 'Must be a valid date in YYYY-MM-DD format' });
   }

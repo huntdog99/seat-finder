@@ -31,7 +31,7 @@ export default function FlightCard({ flight }: Props) {
         )}
       </div>
       <div className="flight-card-price">
-        <div className="price">${flight.price}</div>
+        <div className="price">{new Intl.NumberFormat(undefined, { style: 'currency', currency: flight.currency, minimumFractionDigits: 0 }).format(flight.price)}</div>
         <div className="stops">{stopsLabel}</div>
       </div>
     </div>

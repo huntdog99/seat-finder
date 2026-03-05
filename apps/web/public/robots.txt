@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+
+Sitemap: https://seatfinder.com/sitemap.xml

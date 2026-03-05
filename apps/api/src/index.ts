@@ -1,11 +1,16 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { validateSearchRequest, partitionFlights, SearchRequest, SearchResponse, ApiError } from '@seat-finder/shared';
 import { createProvider } from './providers/providerFactory';
 
 const app = express();
 const port = process.env.PORT || 3001;
 const provider = createProvider();
+
+// Security headers
+app.use(helmet());
 
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
@@ -16,11 +21,30 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10kb' }));
 
+// Rate limiting for search endpoint
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many search requests. Please try again in a minute.' },
+});
+
+// General rate limit
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(generalLimiter);
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', provider: provider.name });
 });
 
-app.post('/api/search', async (req, res) => {
+app.post('/api/search', searchLimiter, async (req, res) => {
   const body = req.body as Partial<SearchRequest>;
 
   const errors = validateSearchRequest(body);
