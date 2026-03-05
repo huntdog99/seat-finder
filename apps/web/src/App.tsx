@@ -55,11 +55,17 @@ export default function App() {
     };
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(`${API_BASE}/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
 
       if (!res.ok) {
         const errBody: ApiError = await res.json();
@@ -69,8 +75,12 @@ export default function App() {
 
       const data: SearchResponse = await res.json();
       setResults(data);
-    } catch {
-      setError({ error: 'Network error. Please check your connection and try again.' });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError({ error: 'Request timed out. Please try again.' });
+      } else {
+        setError({ error: 'Network error. Please check your connection and try again.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -169,6 +179,7 @@ export default function App() {
                 type="checkbox"
                 checked={seatFeatures.includes('bulkhead')}
                 onChange={() => toggleFeature('bulkhead')}
+                aria-label="Bulkhead seat"
               />
               Bulkhead
             </label>
@@ -177,6 +188,7 @@ export default function App() {
                 type="checkbox"
                 checked={seatFeatures.includes('emergency_row')}
                 onChange={() => toggleFeature('emergency_row')}
+                aria-label="Emergency row seat"
               />
               Emergency Row
             </label>
@@ -189,7 +201,7 @@ export default function App() {
       </form>
 
       {error && (
-        <div className="error-msg">
+        <div className="error-msg" role="alert">
           <strong>{error.error}</strong>
           {error.details && (
             <ul>
