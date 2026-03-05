@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { validateSearchRequest, partitionFlights, SearchRequest, SearchResponse, ApiError } from '@seat-finder/shared';
 import { createProvider } from './providers/providerFactory';
@@ -7,8 +7,14 @@ const app = express();
 const port = process.env.PORT || 3001;
 const provider = createProvider();
 
-app.use(cors());
-app.use(express.json());
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: allowedOrigins,
+}));
+app.use(express.json({ limit: '10kb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', provider: provider.name });
@@ -45,6 +51,12 @@ app.post('/api/search', async (req, res) => {
     };
     res.status(500).json(errorResponse);
   }
+});
+
+// Global error handler — prevents stack trace leaks
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error:', err.message);
+  res.status(400).json({ error: 'Bad request' });
 });
 
 app.listen(port, () => {

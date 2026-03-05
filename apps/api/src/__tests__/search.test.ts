@@ -44,6 +44,34 @@ describe('validateSearchRequest', () => {
     const errors = validateSearchRequest({ from: 'JFK', to: 'LAX', departureDate: '2026-03-10', maxStops: 5 });
     expect(errors.some(e => e.field === 'maxStops')).toBe(true);
   });
+
+  it('rejects invalid cabinClass', () => {
+    const errors = validateSearchRequest({ from: 'JFK', to: 'LAX', departureDate: '2026-03-10', cabinClass: 'INVALID' as any, maxStops: 0 });
+    expect(errors.some(e => e.field === 'cabinClass')).toBe(true);
+  });
+
+  it('rejects invalid seatPreferences values', () => {
+    const errors = validateSearchRequest({
+      from: 'JFK', to: 'LAX', departureDate: '2026-03-10', cabinClass: 'economy', maxStops: 0,
+      seatPreferences: { position: 'BOGUS' as any, planeHalf: 'NONSENSE' as any, features: ['FAKE' as any] },
+    });
+    expect(errors.some(e => e.field === 'seatPreferences.position')).toBe(true);
+    expect(errors.some(e => e.field === 'seatPreferences.planeHalf')).toBe(true);
+    expect(errors.some(e => e.field === 'seatPreferences.features')).toBe(true);
+  });
+
+  it('validates returnDate format and ordering', () => {
+    const errors = validateSearchRequest({
+      from: 'JFK', to: 'LAX', departureDate: '2026-03-10', cabinClass: 'economy', maxStops: 0,
+      returnDate: '2026-03-08',
+    });
+    expect(errors.some(e => e.field === 'returnDate')).toBe(true);
+  });
+
+  it('rejects non-ISO date format', () => {
+    const errors = validateSearchRequest({ from: 'JFK', to: 'LAX', departureDate: 'March 10 2026', maxStops: 0 });
+    expect(errors.some(e => e.field === 'departureDate')).toBe(true);
+  });
 });
 
 describe('partitionFlights', () => {

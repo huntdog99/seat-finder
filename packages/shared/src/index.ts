@@ -58,6 +58,12 @@ export interface ApiError {
   details?: ValidationError[];
 }
 
+const VALID_CABIN_CLASSES: CabinClass[] = ['economy', 'business', 'first'];
+const VALID_SEAT_POSITIONS: SeatPosition[] = ['aisle', 'window'];
+const VALID_SEAT_FEATURES: SeatFeature[] = ['bulkhead', 'emergency_row'];
+const VALID_PLANE_HALVES: PlaneHalf[] = ['front', 'back', 'any'];
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 export function validateSearchRequest(req: Partial<SearchRequest>): ValidationError[] {
   const errors: ValidationError[] = [];
   const iataRegex = /^[A-Z]{3}$/;
@@ -68,11 +74,47 @@ export function validateSearchRequest(req: Partial<SearchRequest>): ValidationEr
   if (!req.to || !iataRegex.test(req.to)) {
     errors.push({ field: 'to', message: 'Must be a valid 3-letter IATA airport code (uppercase)' });
   }
-  if (!req.departureDate || isNaN(Date.parse(req.departureDate))) {
-    errors.push({ field: 'departureDate', message: 'Must be a valid ISO date string' });
+
+  if (!req.departureDate || !ISO_DATE_REGEX.test(req.departureDate) || isNaN(Date.parse(req.departureDate))) {
+    errors.push({ field: 'departureDate', message: 'Must be a valid date in YYYY-MM-DD format' });
   }
+
+  if (req.returnDate !== undefined) {
+    if (!ISO_DATE_REGEX.test(req.returnDate) || isNaN(Date.parse(req.returnDate))) {
+      errors.push({ field: 'returnDate', message: 'Must be a valid date in YYYY-MM-DD format' });
+    } else if (req.departureDate && ISO_DATE_REGEX.test(req.departureDate) && req.returnDate <= req.departureDate) {
+      errors.push({ field: 'returnDate', message: 'Must be after departure date' });
+    }
+  }
+
   if (req.maxStops !== undefined && (req.maxStops < 0 || req.maxStops > 3)) {
     errors.push({ field: 'maxStops', message: 'Must be between 0 and 3' });
+  }
+
+  if (req.cabinClass !== undefined && !VALID_CABIN_CLASSES.includes(req.cabinClass as CabinClass)) {
+    errors.push({ field: 'cabinClass', message: `Must be one of: ${VALID_CABIN_CLASSES.join(', ')}` });
+  }
+
+  if (req.seatPreferences) {
+    const prefs = req.seatPreferences;
+    if (prefs.position !== undefined && !VALID_SEAT_POSITIONS.includes(prefs.position as SeatPosition)) {
+      errors.push({ field: 'seatPreferences.position', message: `Must be one of: ${VALID_SEAT_POSITIONS.join(', ')}` });
+    }
+    if (prefs.planeHalf !== undefined && !VALID_PLANE_HALVES.includes(prefs.planeHalf as PlaneHalf)) {
+      errors.push({ field: 'seatPreferences.planeHalf', message: `Must be one of: ${VALID_PLANE_HALVES.join(', ')}` });
+    }
+    if (prefs.features) {
+      if (!Array.isArray(prefs.features)) {
+        errors.push({ field: 'seatPreferences.features', message: 'Must be an array' });
+      } else {
+        for (const f of prefs.features) {
+          if (!VALID_SEAT_FEATURES.includes(f as SeatFeature)) {
+            errors.push({ field: 'seatPreferences.features', message: `Invalid feature "${f}". Must be one of: ${VALID_SEAT_FEATURES.join(', ')}` });
+            break;
+          }
+        }
+      }
+    }
   }
 
   return errors;
