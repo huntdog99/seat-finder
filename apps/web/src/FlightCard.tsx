@@ -13,9 +13,14 @@ export default function FlightCard({ flight }: Props) {
     <div className="flight-card">
       <div className="flight-card-info">
         <h3>{flight.airline} &middot; {flight.flightNumber}</h3>
-        <div className="flight-meta">{flight.cabinClass.charAt(0).toUpperCase() + flight.cabinClass.slice(1)} &middot; {stopsLabel}</div>
+        <div className="flight-meta">
+          {flight.cabinClass.charAt(0).toUpperCase() + flight.cabinClass.slice(1)}
+        </div>
         <div className="flight-times">
-          {depTime} &rarr; {arrTime} &middot; {formatDuration(flight.durationMinutes)}
+          <span>{depTime}</span>
+          <span className="arrow">&rarr;</span>
+          <span>{arrTime}</span>
+          <span className="duration">{formatDuration(flight.durationMinutes)}</span>
         </div>
         {flight.availableSeats.length > 0 && (
           <div className="seat-tags">
@@ -31,8 +36,10 @@ export default function FlightCard({ flight }: Props) {
         )}
       </div>
       <div className="flight-card-price">
-        <div className="price">{new Intl.NumberFormat(undefined, { style: 'currency', currency: flight.currency, minimumFractionDigits: 0 }).format(flight.price)}</div>
-        <div className="stops">{stopsLabel}</div>
+        <div className="price">
+          {new Intl.NumberFormat(undefined, { style: 'currency', currency: flight.currency, minimumFractionDigits: 0 }).format(flight.price)}
+        </div>
+        <div className={`stops${flight.stops === 0 ? ' stops-nonstop' : ''}`}>{stopsLabel}</div>
       </div>
     </div>
   );
